@@ -1,9 +1,7 @@
 import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr
 from typing import List, Optional
-from bson import ObjectId
 
 from database import db, create_document, get_documents
 from schemas import Product, Inquiry
@@ -74,6 +72,92 @@ def list_products(category: Optional[str] = None, limit: int = 24):
             d["id"] = str(d.get("_id"))
             d.pop("_id", None)
         return docs
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/products/seed", response_model=dict)
+def seed_products():
+    """Seed database with sample Oil & Gas products if empty or missing."""
+    try:
+        samples: List[Product] = [
+            Product(
+                name="Cryogenic Solenoid Valve",
+                category="Cryogenic Valves",
+                short_description="Stainless steel cryogenic solenoid valve for LNG service",
+                specs={"size": "1/2\"", "rating": "Class 600", "temp": "-196°C"},
+                image_url=None,
+                datasheet_url="https://example.com/datasheets/cryogenic-solenoid.pdf",
+                brand="CryoFlow",
+                model="CSV-600",
+                in_stock=True,
+            ),
+            Product(
+                name="API Process Pump",
+                category="Process Pumps",
+                short_description="Horizontal end-suction process pump per API 610",
+                specs={"capacity": "120 m3/h", "head": "80 m", "material": "A216 WCB"},
+                image_url=None,
+                datasheet_url="https://example.com/datasheets/api610-pump.pdf",
+                brand="ProPump",
+                model="PP-610",
+                in_stock=True,
+            ),
+            Product(
+                name="Mud Logging Sensor",
+                category="Drilling Sensors",
+                short_description="Real-time drilling mud density & flow sensor",
+                specs={"range": "0-3 SG", "protocol": "Modbus RTU"},
+                image_url=None,
+                datasheet_url="https://example.com/datasheets/mud-sensor.pdf",
+                brand="DrillSense",
+                model="MS-300",
+                in_stock=False,
+            ),
+            Product(
+                name="Cryogenic Globe Valve",
+                category="Cryogenic Valves",
+                short_description="Extended bonnet globe valve for LNG cold service",
+                specs={"size": "2\"", "rating": "Class 300", "material": "CF8M"},
+                image_url=None,
+                datasheet_url="https://example.com/datasheets/cryogenic-globe.pdf",
+                brand="ArcticValve",
+                model="CGV-300",
+                in_stock=True,
+            ),
+            Product(
+                name="Multistage Boiler Feed Pump",
+                category="Process Pumps",
+                short_description="High-pressure boiler feed pump for utilities",
+                specs={"stages": "6", "pressure": "35 bar"},
+                image_url=None,
+                datasheet_url="https://example.com/datasheets/boiler-feed.pdf",
+                brand="ThermoFlow",
+                model="BFP-6S",
+                in_stock=True,
+            ),
+            Product(
+                name="Downhole Pressure Sensor",
+                category="Drilling Sensors",
+                short_description="High-temp downhole pressure sensor for MWD",
+                specs={"pressure": "20k psi", "temp": "175°C"},
+                image_url=None,
+                datasheet_url="https://example.com/datasheets/downhole-pressure.pdf",
+                brand="GeoProbe",
+                model="DPS-20K",
+                in_stock=False,
+            ),
+        ]
+
+        inserted = 0
+        for p in samples:
+            # check duplicate by name+model
+            exists = get_documents("product", {"name": p.name, "model": p.model}, limit=1)
+            if not exists:
+                create_document("product", p)
+                inserted += 1
+
+        return {"status": "ok", "inserted": inserted}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
